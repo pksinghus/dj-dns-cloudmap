@@ -1,0 +1,24 @@
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualService
+metadata:
+  name: metal.${APP_NAMESPACE}.svc.cluster.local
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  virtualRouter:
+    name: metal-router
+    listeners:
+      - portMapping:
+          port: 9080
+          protocol: http
+  routes:
+    - name: metal-route
+      http:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeName: metal-v1
+              weight: 50
+            - virtualNodeName: metal-v2
+              weight: 50

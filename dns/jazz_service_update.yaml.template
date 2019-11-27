@@ -1,0 +1,24 @@
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualService
+metadata:
+  name: jazz.${APP_NAMESPACE}.svc.cluster.local
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  virtualRouter:
+    name: jazz-router
+    listeners:
+      - portMapping:
+          port: 9080
+          protocol: http
+  routes:
+    - name: jazz-route
+      http:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeName: jazz-v1
+              weight: 50
+            - virtualNodeName: jazz-v2
+              weight: 50
