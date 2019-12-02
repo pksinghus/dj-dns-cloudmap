@@ -4,6 +4,8 @@
 .AppleDouble
 .LSOverride
 
+_output/
+
 # Intelli
 .idea
 

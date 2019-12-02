@@ -23,6 +23,8 @@ spec:
       version: v1
   template:
     metadata:
+      annotations:
+        appmesh.k8s.aws/mesh: ${MESH_NAME}
       labels:
         app: dj
         version: v1
@@ -50,6 +52,8 @@ spec:
       version: v1
   template:
     metadata:
+      annotations:
+        appmesh.k8s.aws/mesh: ${MESH_NAME}
       labels:
         app: metal
         version: v1
@@ -78,6 +82,8 @@ spec:
       version: v1
   template:
     metadata:
+      annotations:
+        appmesh.k8s.aws/mesh: ${MESH_NAME}
       labels:
         app: jazz
         version: v1
@@ -91,3 +97,190 @@ spec:
           env:
             - name: "HW_RESPONSE"
               value: "[\"Astrud Gilberto\",\"Miles Davis\"]"
+---
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualNode
+metadata:
+  name: dj
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  listeners:
+    - portMapping:
+        port: 9080
+        protocol: http
+  serviceDiscovery:
+    cloudMap:
+      namespaceName: ${CLOUDMAP_NAMESPACE}
+      serviceName: dj
+  backends:
+    - virtualService:
+        virtualServiceName: jazz.${CLOUDMAP_NAMESPACE}
+    - virtualService:
+        virtualServiceName: metal.${CLOUDMAP_NAMESPACE}
+---
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualNode
+metadata:
+  name: jazz-v1
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  listeners:
+    - portMapping:
+        port: 9080
+        protocol: http
+  serviceDiscovery:
+    cloudMap:
+      namespaceName: ${CLOUDMAP_NAMESPACE}
+      serviceName: jazz
+---
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualNode
+metadata:
+  name: metal-v1
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  listeners:
+    - portMapping:
+        port: 9080
+        protocol: http
+  serviceDiscovery:
+    cloudMap:
+      namespaceName: ${CLOUDMAP_NAMESPACE}
+      serviceName: metal
+---
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualService
+metadata:
+  name: jazz.${CLOUDMAP_NAMESPACE}
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  virtualRouter:
+    name: jazz-router
+    listeners:
+      - portMapping:
+          port: 9080
+          protocol: http
+  routes:
+    - name: jazz-route
+      http:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeName: jazz-v1
+              weight: 100
+---
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualService
+metadata:
+  name: metal.${CLOUDMAP_NAMESPACE}
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  virtualRouter:
+    name: metal-router
+    listeners:
+      - portMapping:
+          port: 9080
+          protocol: http
+  routes:
+    - name: metal-route
+      http:
+        match:
+          prefix: /
+        action:
+          weightedTargets:
+            - virtualNodeName: metal-v1
+              weight: 100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jazz-v2
+  namespace: ${APP_NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jazz
+      version: v2
+  template:
+    metadata:
+      annotations:
+        appmesh.k8s.aws/mesh: ${MESH_NAME}
+      labels:
+        app: jazz
+        version: v2
+    spec:
+      containers:
+        - name: jazz
+          image: "672518094988.dkr.ecr.us-west-2.amazonaws.com/hello-world:v1.0"
+          ports:
+            - containerPort: 9080
+          env:
+            - name: "HW_RESPONSE"
+              value: "[\"Astrud Gilberto (Bahia, Brazil)\",\"Miles Davis (Alton, Illinois)\"]"
+---
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualNode
+metadata:
+  name: jazz-v2
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  listeners:
+    - portMapping:
+        port: 9080
+        protocol: http
+  serviceDiscovery:
+    cloudMap:
+      namespaceName: ${CLOUDMAP_NAMESPACE}
+      serviceName: jazz
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metal-v2
+  namespace: ${APP_NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metal
+      version: v2
+  template:
+    metadata:
+      annotations:
+        appmesh.k8s.aws/mesh: ${MESH_NAME}
+      labels:
+        app: metal
+        version: v2
+    spec:
+      containers:
+        - name: metal
+          image: "672518094988.dkr.ecr.us-west-2.amazonaws.com/hello-world:v1.0"
+          ports:
+            - containerPort: 9080
+          env:
+            - name: "HW_RESPONSE"
+              value: "[\"Megadeth (Los Angeles, California)\",\"Judas Priest (West Bromwich, England)\"]"
+---
+apiVersion: appmesh.k8s.aws/v1beta1
+kind: VirtualNode
+metadata:
+  name: metal-v2
+  namespace: ${APP_NAMESPACE}
+spec:
+  meshName: ${MESH_NAME}
+  listeners:
+    - portMapping:
+        port: 9080
+        protocol: http
+  serviceDiscovery:
+    cloudMap:
+      namespaceName: ${CLOUDMAP_NAMESPACE}
+      serviceName: metal
